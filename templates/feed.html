@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouRSS</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="feed-container">
+        {{range .}}
+        <a href="{{.Link.Href}}" class="video-card">
+            <img src="{{.Thumbnail}}" alt="Thumbnail" class="thumbnail">
+            <div>
+                <h2 class="title">{{.Title}}</h2>
+                <p class="subtext">{{.Author}}</p>
+                <p class="subtext">{{viewCount .Views}} • {{timeAgo .PubDate}}</p>
+            </div>
+        </a>
+        {{end}}
+    </div>
+</body>
+</html>
