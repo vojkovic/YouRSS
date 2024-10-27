@@ -2,6 +2,10 @@
 
 YouRSS is a simple RSS feed reader for YouTube channels. It is a web application that allows you to subscribe to YouTube channels and receive their latest videos in your feed. Simply provide a list of YouTube channel IDs and YouRSS will take care of the rest.
 
+## Interface
+
+![Interface](.github/docs/Interface.png)
+
 ## Running YouRSS
 
 First create a config.yaml file with a list of YouTube channels you want to subscribe to. The file should look like this:
