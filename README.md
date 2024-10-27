@@ -1,7 +1,6 @@
-# YouRSS
+![YouRSS](static/logo.svg)
 
 YouRSS is a simple RSS feed reader for YouTube channels. It is a web application that allows you to subscribe to YouTube channels and receive their latest videos in your feed. Simply provide a list of YouTube channel IDs and YouRSS will take care of the rest.
-
 
 ## Running YouRSS
 
