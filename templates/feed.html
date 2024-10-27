@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouRSS</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
     <div class="feed-container">
+        <img src="/static/logo.svg" alt="YouRSS" class="logo">
+        <p class="subtext">Number of videos: {{len .}}</p>
         {{range .}}
         <a href="{{.Link.Href}}" class="video-card">
             <img src="{{.Thumbnail}}" alt="Thumbnail" class="thumbnail">
