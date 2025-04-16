@@ -14,10 +14,20 @@
         {{range .}}
         <a href="{{.Link.Href}}" class="video-card">
             <img src="{{.Thumbnail}}" alt="Thumbnail" class="thumbnail">
-            <div>
+            <div class="video-info">
                 <h2 class="title">{{.Title}}</h2>
-                <p class="subtext">{{.Author}}</p>
-                <p class="subtext">{{viewCount .Views}} • {{timeAgo .PubDate}}</p>
+                <div class="metadata">
+                    <p class="channel">{{.Author}}</p>
+                    <p class="stats">{{viewCount .Views}} • {{timeAgo .PubDate}}</p>
+                </div>
+            </div>
+            <div class="hover-details">
+                <img src="/static/like.svg" alt="Likes" class="like-icon">
+                <span class="like-count">{{likeCount .MediaGroup.MediaCommunity.Rating.Count}}</span>
+            </div>
+            <div class="hover-description-box">
+                <h3 class="hover-title">{{.Title}}</h3>
+                <div class="hover-description">{{.MediaGroup.Description}}</div>
             </div>
         </a>
         {{end}}

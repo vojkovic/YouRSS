@@ -1,11 +1,45 @@
 :root {
-  --background-color: rgb(10 10 10);
+  --background-color: #0f0f13;
+  --background-gradient: linear-gradient(135deg, #0f0f13 0%, #1a1a24 100%);
   --text-color: #ffffff;
-  --sub-text-color: hsla(0,0%,100%,.7);
-  --link-color: #bb86fc;
-  --thumbnail-border-radius: 8px;
-  --card-background: rgb(17 17 17);
-  --card-shadow: rgba(0, 0, 0, 0.5);
+  --sub-text-color: rgba(255, 255, 255, 0.85);
+  --link-color: #a78bfa;
+  --thumbnail-border-radius: 16px;
+  --card-background: rgba(28, 28, 35, 0.95);
+  --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --card-hover-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --card-hover-scale: 1.02;
+  --transition-speed: 0.2s;
+  --scrollbar-width: 8px;
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+}
+
+/* Modern scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: var(--scrollbar-width);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: var(--scrollbar-width);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
 
 a:visited {
@@ -16,17 +50,26 @@ a:link {
   color: var(--text-color);
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
 html {
   scroll-behavior: smooth;
-  scrollbar-width: thin;
-  scrollbar-color: var(--link-color) var(--background-color);
+  font-size: 16px;
+  background: var(--background-color);
 }
 
 body {
-  background-color: var(--background-color);
   color: var(--text-color);
-  font-family: 'Arial', sans-serif;
-  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  line-height: 1.5;
+  background: var(--background-gradient);
+  background-attachment: fixed;
   padding: 20px;
 }
 
@@ -34,32 +77,42 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: fadeInAndUp 0.5s;
+  gap: 12px;
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 16px;
+  animation: fadeInAndUp 0.8s ease-out;
 }
 
 .video-card {
   display: flex;
   background-color: var(--card-background);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-radius: var(--thumbnail-border-radius);
-  box-shadow: 0 2px 10px var(--card-shadow);
-  margin: 5px;
-  padding: 25px;
-  width: 90%;
-  max-width: 600px;
+  box-shadow: var(--card-shadow);
+  margin: 0;
+  padding: 16px;
+  width: 100%;
   text-decoration: none;
-  transition: transform 0.2s;
+  transition: all var(--transition-speed) cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  will-change: transform;
 }
 
 .video-card div {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 8px;
 }
 
 @keyframes fadeInAndUp {
   from {
     opacity: 0;
-    transform: translateY(50px);
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -68,40 +121,255 @@ body {
 }
 
 .video-card:hover {
-  transform: scale(1.02);
-  background-color: rgb(20 20 20);
+  transform: scale(var(--card-hover-scale));
+  box-shadow: var(--card-hover-shadow);
+  background-color: rgba(25, 25, 25, 0.9);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .thumbnail {
-  height: 100px;
-  width: 150px;
-  border-radius: var(--thumbnail-border-radius);
-  margin-right: 15px;
-  align-self: center;
+  height: 94px;
+  width: 168px;
+  border-radius: 12px;
+  margin-right: 16px;
+  align-self: flex-start;
+  object-fit: cover;
+  transition: transform var(--transition-speed) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.video-card:hover .thumbnail {
+  transform: scale(1.05);
+}
+
+.video-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  padding-top: 2px;
 }
 
 .title {
-  font-size: 1em;
-  margin: 0 0;
+  font-size: 1.05em;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--text-color);
+}
+
+.metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.channel {
+  font-size: 0.85em;
+  color: var(--sub-text-color);
+  margin: 0;
+}
+
+.stats {
+  font-size: 0.85em;
+  color: var(--sub-text-color);
+  margin: 0;
+}
+
+.description {
+  font-size: 0.9em;
+  color: var(--sub-text-color);
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.updated {
+  color: var(--sub-text-color);
+  font-size: 0.9em;
+}
+
+.views, .likes, .published {
+  display: inline-flex;
+  align-items: center;
 }
 
 .link {
   color: var(--link-color);
   text-decoration: none;
+  transition: color var(--transition-speed);
 }
 
 .link:hover {
   text-decoration: underline;
 }
 
-.subtext {
-  font-size: 0.9em;
-  margin: 10px 0;
-  color: var(--sub-text-color);
-}
-
 .logo {
   padding: 20px 0;
   width: 80%;
-  max-width: 300px;
+  max-width: 250px;
+}
+
+.hover-details {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%) translateX(10px);
+  width: auto;
+  background-color: #282828;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  padding: 6px 10px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.like-icon {
+  width: 13px;
+  height: 13px;
+  display: block;
+  filter: invert(1) opacity(0.7);
+}
+
+.like-count {
+  color: var(--sub-text-color);
+  font-size: 13px;
+  display: block;
+}
+
+.video-card:hover .hover-details {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
+
+.hover-description-box {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-10px);
+  width: 320px;
+  max-height: 520px;
+  background-color: var(--card-background);
+  border-radius: var(--thumbnail-border-radius);
+  box-shadow: var(--card-shadow);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-speed) cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  z-index: 10;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.hover-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.hover-description {
+  font-size: 13px;
+  color: var(--sub-text-color);
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.video-card:hover .hover-description-box {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+  pointer-events: auto;
+}
+
+.hover-stats {
+  font-size: 0.9em;
+  color: var(--sub-text-color);
+  margin: 0;
+}
+
+@media (max-width: 1200px) {
+  .hover-details,
+  .hover-description-box {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    margin: 0;
+    z-index: 100;
+  }
+
+  .hover-details {
+    width: 120px;
+  }
+
+  .hover-description-box {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    margin: 0;
+    z-index: 100;
+    width: min(280px, 90vw);
+    max-height: 60vh;
+  }
+
+  .video-card:hover .hover-details,
+  .video-card:hover .hover-description-box {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (max-width: 600px) {
+  .video-card {
+    flex-direction: column;
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  .thumbnail {
+    width: 100%;
+    height: 200px;
+    margin-right: 0;
+    margin-bottom: 0;
+  }
+  
+  .title {
+    font-size: 1.1em;
+  }
+  
+  body {
+    padding: 12px;
+  }
+  
+  .feed-container {
+    padding: 12px;
+    gap: 16px;
+  }
+
+  .hover-description-box,
+  .hover-details {
+    display: none;
+  }
 }
