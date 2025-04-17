@@ -13,6 +13,10 @@ import (
     "io"
     "bytes"
     "time"
+    "strings"
+    "path"
+    "crypto/md5"
+    "encoding/hex"
 )
 
 type Config struct {
@@ -69,6 +73,8 @@ var (
     allEntries = []Entry{}
     feedsMutex sync.RWMutex
     tmpl       *template.Template
+    urlCache = make(map[string]string)
+    cacheMutex sync.RWMutex
 )
 
 func main() {
@@ -87,6 +93,7 @@ func main() {
     go updateFeeds(cfg, 5*time.Minute)
 
     http.HandleFunc("/", feedHandler)
+    http.HandleFunc("/proxy/", proxyHandler)
     http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
     log.Println("Server started at http://localhost:8080")
@@ -140,11 +147,63 @@ func fetchFeed(url string) ([]Entry, error) {
         if feed.Entries[i].Updated != "" {
             feed.Entries[i].UpdateDate, _ = time.Parse(time.RFC3339, feed.Entries[i].Updated)
         }
-        feed.Entries[i].Thumbnail = feed.Entries[i].MediaGroup.Thumbnail.URL
+        originalURL := feed.Entries[i].MediaGroup.Thumbnail.URL
+        feed.Entries[i].Thumbnail = cacheURL(originalURL)
         feed.Entries[i].Views = feed.Entries[i].MediaGroup.MediaCommunity.Statistics.Views
     }
 
     return feed.Entries, nil
+}
+
+func hashURL(url string) string {
+    hasher := md5.New()
+    hasher.Write([]byte(url))
+    return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func cacheURL(originalURL string) string {
+    hashedURL := hashURL(originalURL)
+    ext := path.Ext(originalURL)
+    cacheMutex.Lock()
+    urlCache[hashedURL] = originalURL
+    cacheMutex.Unlock()
+    return "/proxy/" + hashedURL + ext
+}
+
+func getOriginalURL(hashedURL string) (string, bool) {
+    cacheMutex.RLock()
+    originalURL, exists := urlCache[strings.TrimSuffix(hashedURL, path.Ext(hashedURL))]
+    cacheMutex.RUnlock()
+    return originalURL, exists
+}
+
+func proxyHandler(w http.ResponseWriter, r *http.Request) {
+    // Extract the hashed filename from the URL
+    hashedFilename := path.Base(r.URL.Path)
+    
+    // Get the original URL from our cache
+    originalURL, exists := getOriginalURL(hashedFilename)
+    if !exists {
+        http.Error(w, "Image not found", http.StatusNotFound)
+        return
+    }
+
+    // Fetch the image from the original URL
+    resp, err := http.Get(originalURL)
+    if err != nil {
+        http.Error(w, "Failed to fetch image", http.StatusInternalServerError)
+        return
+    }
+    defer resp.Body.Close()
+
+    // Copy the content type header
+    w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+    w.Header().Set("Cache-Control", "public, max-age=31536000") // Cache for 1 year
+
+    // Stream the image data to the response
+    if _, err := io.Copy(w, resp.Body); err != nil {
+        log.Printf("Error streaming image: %v", err)
+    }
 }
 
 func updateFeeds(cfg Config, interval time.Duration) {
@@ -163,12 +222,22 @@ func updateFeeds(cfg Config, interval time.Duration) {
 
         log.Printf("Total entries fetched: %d", len(newEntries))
 
-        sort.Slice(newEntries, func(i, j int) bool {
-            return newEntries[i].PubDate.After(newEntries[j].PubDate)
+        // Filter out entries older than 2 years
+        twoYearsAgo := time.Now().AddDate(-2, 0, 0)
+        filteredEntries := make([]Entry, 0)
+        for _, entry := range newEntries {
+            if entry.PubDate.After(twoYearsAgo) {
+                filteredEntries = append(filteredEntries, entry)
+            }
+        }
+        log.Printf("Entries after filtering (< 2 years old): %d", len(filteredEntries))
+
+        sort.Slice(filteredEntries, func(i, j int) bool {
+            return filteredEntries[i].PubDate.After(filteredEntries[j].PubDate)
         })
 
         feedsMutex.Lock()
-        allEntries = newEntries
+        allEntries = filteredEntries
         feedsMutex.Unlock()
 
         log.Printf("Feed update complete. Next update in %v", interval)
