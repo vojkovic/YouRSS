@@ -370,6 +370,18 @@ body {
 
   .hover-description-box,
   .hover-details {
-    display: none;
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .video-card:hover .hover-description-box,
+  .video-card:hover .hover-details {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: none !important;
   }
 }
