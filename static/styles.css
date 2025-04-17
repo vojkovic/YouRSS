@@ -82,6 +82,8 @@ body {
   margin: 0 auto;
   padding: 16px;
   animation: fadeInAndUp 0.8s ease-out;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .video-card {
@@ -99,6 +101,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
   will-change: transform;
+  box-sizing: border-box;
 }
 
 .video-card div {
@@ -342,30 +345,60 @@ body {
 }
 
 @media (max-width: 600px) {
-  .video-card {
-    flex-direction: column;
-    padding: 16px;
-    gap: 16px;
+  html {
+    font-size: 14px;
   }
-  
-  .thumbnail {
-    width: 100%;
-    height: 200px;
-    margin-right: 0;
-    margin-bottom: 0;
-  }
-  
-  .title {
-    font-size: 1.1em;
-  }
-  
+
   body {
-    padding: 12px;
+    padding: 0;
   }
   
   .feed-container {
     padding: 12px;
-    gap: 16px;
+    gap: 12px;
+    max-width: 100%;
+  }
+
+  .video-card {
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+    border-radius: 12px;
+  }
+  
+  .thumbnail {
+    width: 100%;
+    height: 180px;
+    margin-right: 0;
+    margin-bottom: 0;
+    border-radius: 8px;
+  }
+  
+  .title {
+    font-size: 1em;
+    -webkit-line-clamp: 2;
+  }
+
+  .channel {
+    font-size: 0.9em;
+  }
+
+  .stats {
+    font-size: 0.9em;
+  }
+  
+  .video-info {
+    gap: 4px;
+  }
+
+  .metadata {
+    gap: 2px;
+  }
+
+  .logo {
+    width: 70%;
+    max-width: 200px;
+    padding: 12px 0;
   }
 
   .hover-description-box,
@@ -376,12 +409,32 @@ body {
     pointer-events: none !important;
   }
 
-  .video-card:hover .hover-description-box,
-  .video-card:hover .hover-details {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-    transform: none !important;
+  .video-card:hover {
+    transform: none;
+    box-shadow: var(--card-shadow);
+  }
+
+  .video-card:hover .thumbnail {
+    transform: none;
+  }
+}
+
+@media (max-width: 360px) {
+  html {
+    font-size: 13px;
+  }
+
+  .feed-container {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .video-card {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .thumbnail {
+    height: 160px;
   }
 }
