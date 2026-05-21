@@ -19,6 +19,8 @@ channels:
 
 The key is a label for your own reference (used in logs and error messages). The value is the YouTube channel ID from the channel URL.
 
+Use the converter at the bottom of the page to turn a channel link like `https://www.youtube.com/@Computerphile` into a config line you can paste into `config.yaml`.
+
 ## Run locally
 
 Requires Go 1.23+.

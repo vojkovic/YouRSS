@@ -86,6 +86,50 @@ img {
   font-size: 0.875rem;
 }
 
+footer {
+  border-top: 1px solid #333;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+}
+
+footer form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+footer input {
+  background: #111;
+  border: 1px solid #333;
+  color: #ddd;
+  flex: 1;
+  font: inherit;
+  min-width: 0;
+  padding: 0.375rem 0.5rem;
+}
+
+footer button {
+  background: #222;
+  border: 1px solid #333;
+  color: #ddd;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.375rem 0.625rem;
+}
+
+footer output {
+  color: #888;
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+footer .error {
+  color: #c88;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 600px) {
   a {
     flex-direction: column;

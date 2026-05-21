@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -70,8 +71,11 @@ type FeedStatus struct {
 }
 
 type PageData struct {
-	Entries []Entry
-	Status  FeedStatus
+	Entries       []Entry
+	Status        FeedStatus
+	ConvertURL    string
+	ConvertResult string
+	ConvertError  string
 }
 
 var (
@@ -85,8 +89,9 @@ var (
 	urlCache      = make(map[string]string)
 	cacheMutex    sync.RWMutex
 	httpClient    = &http.Client{Timeout: 15 * time.Second}
-	port          = envOrDefault("PORT", "8080")
-	videoURLBase  = strings.TrimRight(os.Getenv("VIDEO_URL"), "/")
+	port             = envOrDefault("PORT", "8080")
+	videoURLBase     = strings.TrimRight(os.Getenv("VIDEO_URL"), "/")
+	channelIDPattern = regexp.MustCompile(`youtube\.com/channel/(UC[a-zA-Z0-9_-]+)`)
 )
 
 func main() {
@@ -176,6 +181,74 @@ func extractVideoID(href string) string {
 	}
 
 	return ""
+}
+
+func resolveChannelID(rawURL string) (string, error) {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return "", fmt.Errorf("enter a channel URL")
+	}
+	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+		rawURL = "https://" + rawURL
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid URL")
+	}
+
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) >= 2 && parts[0] == "channel" && strings.HasPrefix(parts[1], "UC") {
+		return parts[1], nil
+	}
+
+	req, err := http.NewRequest(http.MethodGet, parsed.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("could not fetch channel page")
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
+	if err != nil {
+		return "", err
+	}
+
+	match := channelIDPattern.FindSubmatch(body)
+	if len(match) < 2 {
+		return "", fmt.Errorf("could not find channel ID")
+	}
+
+	return string(match[1]), nil
+}
+
+func configLabel(channelURL, channelID string) string {
+	parsed, err := url.Parse(channelURL)
+	if err != nil {
+		return "ChannelName"
+	}
+
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) == 0 {
+		return "ChannelName"
+	}
+
+	label := parts[len(parts)-1]
+	label = strings.TrimPrefix(label, "@")
+	if label == "" || label == channelID {
+		return "ChannelName"
+	}
+
+	return label
 }
 
 func loadConfig(path string) (Config, error) {
@@ -388,6 +461,16 @@ func feedHandler(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Entries: getEntries(),
 		Status:  getStatus(),
+	}
+
+	if convertURL := strings.TrimSpace(r.URL.Query().Get("convert")); convertURL != "" {
+		data.ConvertURL = convertURL
+		channelID, err := resolveChannelID(convertURL)
+		if err != nil {
+			data.ConvertError = err.Error()
+		} else {
+			data.ConvertResult = fmt.Sprintf(`  %s: "%s"`, configLabel(convertURL, channelID), channelID)
+		}
 	}
 
 	if err := tmpl.Execute(w, data); err != nil {

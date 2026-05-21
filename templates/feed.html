@@ -31,5 +31,13 @@
         </li>
         {{end}}
     </ul>
+    <footer>
+        <form method="GET" action="/">
+            <input name="convert" type="text" value="{{.ConvertURL}}" placeholder="https://www.youtube.com/@channel" spellcheck="false">
+            <button type="submit">Convert</button>
+        </form>
+        {{if .ConvertResult}}<output>{{.ConvertResult}}</output>{{end}}
+        {{if .ConvertError}}<p class="error">{{.ConvertError}}</p>{{end}}
+    </footer>
 </body>
 </html>
