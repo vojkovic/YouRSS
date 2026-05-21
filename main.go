@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"sort"
@@ -84,6 +85,8 @@ var (
 	urlCache      = make(map[string]string)
 	cacheMutex    sync.RWMutex
 	httpClient    = &http.Client{Timeout: 15 * time.Second}
+	port          = envOrDefault("PORT", "8080")
+	videoURLBase  = strings.TrimRight(os.Getenv("VIDEO_URL"), "/")
 )
 
 func main() {
@@ -100,6 +103,10 @@ func main() {
 
 	refreshFeeds(cfg)
 
+	if videoURLBase != "" {
+		log.Printf("Video links will use %s", videoURLBase)
+	}
+
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
@@ -112,10 +119,48 @@ func main() {
 	http.HandleFunc("/proxy/", proxyHandler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	log.Println("Server started at http://localhost:8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	log.Printf("Server started at http://localhost:%s", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func rewriteWatchURL(href string) string {
+	if videoURLBase == "" {
+		return href
+	}
+
+	videoID := extractVideoID(href)
+	if videoID == "" {
+		return href
+	}
+
+	return videoURLBase + "/watch?v=" + videoID
+}
+
+func extractVideoID(href string) string {
+	parsed, err := url.Parse(href)
+	if err != nil {
+		return ""
+	}
+
+	if id := parsed.Query().Get("v"); id != "" {
+		return id
+	}
+
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) == 2 && parts[0] == "shorts" {
+		return parts[1]
+	}
+
+	return ""
 }
 
 func loadConfig(path string) (Config, error) {
@@ -162,6 +207,7 @@ func fetchFeed(url string) ([]Entry, error) {
 
 	for i := range feed.Entries {
 		feed.Entries[i].PubDate, _ = time.Parse(time.RFC3339, feed.Entries[i].Published)
+		feed.Entries[i].Link.Href = rewriteWatchURL(feed.Entries[i].Link.Href)
 		originalURL := feed.Entries[i].MediaGroup.Thumbnail.URL
 		feed.Entries[i].Thumbnail = cacheURL(originalURL)
 		feed.Entries[i].Views = feed.Entries[i].MediaGroup.MediaCommunity.Statistics.Views

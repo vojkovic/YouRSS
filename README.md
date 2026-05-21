@@ -35,12 +35,24 @@ make
 
 Open http://localhost:8080. Feeds refresh every 5 minutes.
 
+## Environment variables
+
+- `PORT` - HTTP port to listen on. Defaults to `8080`.
+- `VIDEO_URL` - Base URL for video links. Leave unset to use YouTube. Set to an Invidious or Piped instance to rewrite links, e.g. `https://invidious.tiekoetter.com`.
+
+```bash
+PORT=3000 VIDEO_URL=https://invidious.tiekoetter.com go run main.go
+```
+
 ## Docker
 
 Prebuilt image from GitHub Container Registry:
 
 ```bash
-docker run -d -p 8080:8080 -v /path/to/config.yaml:/config.yaml ghcr.io/vojkovic/yourss
+docker run -d -p 8080:8080 \
+  -v /path/to/config.yaml:/config.yaml \
+  -e VIDEO_URL=https://invidious.tiekoetter.com \
+  ghcr.io/vojkovic/yourss
 ```
 
 Build and run locally:
