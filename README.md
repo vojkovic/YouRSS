@@ -1,14 +1,14 @@
-![YouRSS](static/logo.svg)
+# YouRSS
 
-YouRSS is a simple RSS feed reader for YouTube channels. It is a web application that allows you to subscribe to YouTube channels and receive their latest videos in your feed. Simply provide a list of YouTube channel IDs and YouRSS will take care of the rest.
+A minimal, no frills RSS feed reader for YouTube.
 
-## Interface
+![YouRSS interface](docs/Screenshot.png)
 
-![Interface](.github/docs/Interface.png)
+The header shows fetch health (`3/3 channels · 39 videos · updated 2 minutes ago`) and keeps cached results when a channel fails to refresh.
 
-## Running YouRSS
+## Configuration
 
-First create a config.yaml file with a list of YouTube channels you want to subscribe to. The file should look like this:
+Create a `config.yaml` in the working directory:
 
 ```yaml
 channels:
@@ -17,21 +17,39 @@ channels:
   TomScott: "UCBa659QWEk1AI4Tg--mrJ2A"
 ```
 
-The name of the channel is the key and the channel ID is the value. The name can be anything you want, it is just so you can identify the channel in the configuration file. The channel ID is the unique identifier for the channel and can be found in the URL of the channel page.
+The key is a label for your own reference (used in logs and error messages). The value is the YouTube channel ID from the channel URL.
 
-YouRSS is a Go application and can be run as a standalone binary. It is also available as a <9MB Docker image which is the recommended way to run it.
+## Run locally
 
-### Docker
+Requires Go 1.23+.
 
-YouRSS is available as a Docker image on GitHub Container Registry. You can run it with the following command:
+```bash
+go run main.go
+```
+
+Or:
+
+```bash
+make
+```
+
+Open http://localhost:8080. Feeds refresh every 5 minutes.
+
+## Docker
+
+Prebuilt image from GitHub Container Registry:
 
 ```bash
 docker run -d -p 8080:8080 -v /path/to/config.yaml:/config.yaml ghcr.io/vojkovic/yourss
 ```
 
-### Docker Compose
+Build and run locally:
 
-You can also use Docker Compose to run YouRSS. Create a `docker-compose.yaml` file with the following content:
+```bash
+make docker
+```
+
+### Docker Compose
 
 ```yaml
 services:
@@ -44,9 +62,6 @@ services:
       - /path/to/config.yaml:/config.yaml
 ```
 
-Then run the following command:
-
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
-

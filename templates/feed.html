@@ -8,29 +8,28 @@
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 </head>
 <body>
-    <div class="feed-container">
-        <img src="/static/logo.svg" alt="YouRSS" class="logo">
-        <p class="subtext">Number of videos: {{len .}}</p>
-        {{range .}}
-        <a href="{{.Link.Href}}" class="video-card">
-            <img src="{{.Thumbnail}}" alt="Thumbnail" class="thumbnail">
-            <div class="video-info">
-                <h2 class="title">{{.Title}}</h2>
-                <div class="metadata">
-                    <p class="channel">{{.Author}}</p>
-                    <p class="stats">{{viewCount .Views}} • {{timeAgo .PubDate}}</p>
-                </div>
-            </div>
-            <div class="hover-details">
-                <img src="/static/like.svg" alt="Likes" class="like-icon">
-                <span class="like-count">{{likeCount .MediaGroup.MediaCommunity.Rating.Count}}</span>
-            </div>
-            <div class="hover-description-box">
-                <h3 class="hover-title">{{.Title}}</h3>
-                <div class="hover-description">{{.MediaGroup.Description}}</div>
-            </div>
-        </a>
+    <header>
+        <h1>YouRSS</h1>
+        <p class="status">
+            {{if .Status.Updating}}Updating…{{else}}{{.Status.SuccessCount}}/{{.Status.TotalChannels}} channels{{end}}
+            · {{len .Entries}} videos
+            {{if not .Status.Updating}}· updated {{timeAgo .Status.LastUpdate}}{{end}}
+            {{if .Status.FailedChannels}}· failed: {{join .Status.FailedChannels ", "}}{{end}}
+        </p>
+    </header>
+    <ul>
+        {{range .Entries}}
+        <li>
+            <a href="{{.Link.Href}}">
+                <img src="{{.Thumbnail}}" alt="">
+                <span class="meta">
+                    <span class="title">{{.Title}}</span>
+                    <span class="channel">{{.Author}}</span>
+                    <span class="stats">{{viewCount .Views}} · {{timeAgo .PubDate}}</span>
+                </span>
+            </a>
+        </li>
         {{end}}
-    </div>
+    </ul>
 </body>
 </html>
