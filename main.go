@@ -101,14 +101,16 @@ func main() {
 		"join":      strings.Join,
 	}).ParseFiles("templates/feed.html"))
 
+	refreshInterval := envDurationOrDefault("REFRESH_INTERVAL", 5*time.Minute)
 	refreshFeeds(cfg)
 
 	if videoURLBase != "" {
 		log.Printf("Video links will use %s", videoURLBase)
 	}
+	log.Printf("Feed refresh interval: %v", refreshInterval)
 
 	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
+		ticker := time.NewTicker(refreshInterval)
 		defer ticker.Stop()
 		for range ticker.C {
 			refreshFeeds(cfg)
@@ -130,6 +132,19 @@ func envOrDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func envDurationOrDefault(key string, fallback time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	d, err := time.ParseDuration(value)
+	if err != nil {
+		log.Fatalf("Invalid %s: %v", key, err)
+	}
+	return d
 }
 
 func rewriteWatchURL(href string) string {

@@ -33,11 +33,12 @@ Or:
 make
 ```
 
-Open http://localhost:8080. Feeds refresh every 5 minutes.
+Open http://localhost:8080. Feeds refresh every 5 minutes by default.
 
 ## Environment variables
 
 - `PORT` - HTTP port to listen on. Defaults to `8080`.
+- `REFRESH_INTERVAL` - How often to refetch feeds. Defaults to `5m`. Accepts Go duration strings like `10m`, `1h`, `30s`.
 - `VIDEO_URL` - Base URL for video links. Leave unset to use YouTube. Set to an Invidious or Piped instance to rewrite links, e.g. `https://invidious.tiekoetter.com`.
 
 ```bash
