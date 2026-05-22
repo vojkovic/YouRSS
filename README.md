@@ -37,6 +37,8 @@ make
 
 Open http://localhost:8080. Feeds refresh every 15 minutes by default.
 
+YouTube's public Atom feed (`/feeds/videos.xml`) sometimes returns 404 for every channel during certain hours. YouRSS keeps the last successful fetch until the endpoint works again.
+
 ## Environment variables
 
 - `PORT` - HTTP port to listen on. Defaults to `8080`.

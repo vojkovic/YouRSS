@@ -94,6 +94,7 @@ var (
 	port             = envOrDefault("PORT", "8080")
 	videoURLBase     = strings.TrimRight(os.Getenv("VIDEO_URL"), "/")
 	channelIDPattern = regexp.MustCompile(`youtube\.com/channel/(UC[a-zA-Z0-9_-]+)`)
+	feedUserAgent    = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 )
 
 func main() {
@@ -158,6 +159,33 @@ func drainBody(resp *http.Response) {
 		return
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
+}
+
+func shouldRetry(statusCode int) bool {
+	switch statusCode {
+	case http.StatusTooManyRequests,
+		http.StatusInternalServerError,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout:
+		return true
+	default:
+		return statusCode == 0
+	}
+}
+
+func feedFetchError(statusCode int, err error) error {
+	if err == nil {
+		return nil
+	}
+	switch statusCode {
+	case http.StatusNotFound:
+		return fmt.Errorf("%w (YouTube RSS feed unavailable — known intermittent outage, not a bad channel ID)", err)
+	case http.StatusTooManyRequests:
+		return fmt.Errorf("%w (YouTube rate limit — try a longer REFRESH_INTERVAL)", err)
+	default:
+		return err
+	}
 }
 
 func retryDelay(statusCode int, attempt int, retryAfter string) time.Duration {
@@ -319,7 +347,8 @@ func fetchFeed(url string) (entries []Entry, statusCode int, retryAfter string, 
 	if err != nil {
 		return nil, 0, "", err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; YouRSS/1.0)")
+	req.Header.Set("User-Agent", feedUserAgent)
+	req.Header.Set("Accept", "application/atom+xml,application/xml;q=0.9,*/*;q=0.8")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
@@ -356,27 +385,27 @@ func fetchFeed(url string) (entries []Entry, statusCode int, retryAfter string, 
 	return feed.Entries, statusCode, retryAfter, nil
 }
 
-func fetchFeedWithRetry(url string, attempts int) ([]Entry, error) {
+func fetchFeedWithRetry(url string, attempts int) (entries []Entry, statusCode int, err error) {
 	var lastErr error
 	var lastStatus int
 	for attempt := 0; attempt < attempts; attempt++ {
 		entries, statusCode, retryAfter, err := fetchFeed(url)
 		if err == nil {
-			return entries, nil
+			return entries, statusCode, nil
 		}
 		lastErr = err
 		lastStatus = statusCode
 		log.Printf("Fetch attempt %d/%d failed for %s: %v", attempt+1, attempts, url, err)
+		if !shouldRetry(statusCode) {
+			break
+		}
 		if attempt < attempts-1 {
 			delay := retryDelay(statusCode, attempt, retryAfter)
 			log.Printf("Retrying in %v", delay)
 			time.Sleep(delay)
 		}
 	}
-	if lastStatus == http.StatusTooManyRequests {
-		return nil, fmt.Errorf("%w (YouTube rate limit — try a longer REFRESH_INTERVAL)", lastErr)
-	}
-	return nil, lastErr
+	return nil, lastStatus, feedFetchError(lastStatus, lastErr)
 }
 
 func refreshFeeds(cfg Config) {
@@ -385,6 +414,7 @@ func refreshFeeds(cfg Config) {
 
 	total := len(cfg.Channels)
 	successCount := 0
+	notFoundCount := 0
 	failedChannels := make([]string, 0)
 	fetchDelay := channelFetchDelay(total)
 	names := make([]string, 0, total)
@@ -402,9 +432,12 @@ func refreshFeeds(cfg Config) {
 		feedURL := "https://www.youtube.com/feeds/videos.xml?channel_id=" + channelID
 		log.Printf("Fetching channel %s...", name)
 
-		entries, err := fetchFeedWithRetry(feedURL, 5)
+		entries, status, err := fetchFeedWithRetry(feedURL, 5)
 		if err != nil {
 			log.Printf("Error fetching channel %s: %v", name, err)
+			if status == http.StatusNotFound {
+				notFoundCount++
+			}
 			failedChannels = append(failedChannels, name)
 
 			channelMutex.RLock()
@@ -436,6 +469,9 @@ func refreshFeeds(cfg Config) {
 	statusMutex.Unlock()
 
 	log.Printf("Feed update complete: %d/%d channels, %d videos", successCount, total, len(getEntries()))
+	if notFoundCount > 0 && notFoundCount == len(failedChannels) {
+		log.Printf("All failures were HTTP 404 — YouTube's public RSS endpoint is likely down right now (intermittent, not your config); cached videos are kept until it recovers")
+	}
 }
 
 func mergeEntries() {
