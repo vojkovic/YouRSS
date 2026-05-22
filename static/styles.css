@@ -80,6 +80,17 @@ img {
   white-space: nowrap;
 }
 
+li:has(.title:hover) {
+  position: relative;
+  z-index: 1;
+}
+
+.title:hover {
+  background: #111;
+  overflow: visible;
+  width: max-content;
+}
+
 .channel,
 .stats {
   color: #888;
