@@ -35,12 +35,14 @@ Or:
 make
 ```
 
-Open http://localhost:8080. Feeds refresh every 5 minutes by default.
+Open http://localhost:8080. Feeds refresh every 15 minutes by default.
 
 ## Environment variables
 
 - `PORT` - HTTP port to listen on. Defaults to `8080`.
-- `REFRESH_INTERVAL` - How often to refetch feeds. Defaults to `5m`. Accepts Go duration strings like `10m`, `1h`, `30s`.
+- `REFRESH_INTERVAL` - How often to refetch feeds. Defaults to `15m`. Accepts Go duration strings like `5m`, `30m`, `1h`. With many channels (20+), consider `30m` to reduce YouTube rate limiting.
+- `HTTP_TIMEOUT` - Per-request timeout for YouTube and thumbnail fetches. Defaults to `30s`.
+- `CHANNEL_FETCH_DELAY` - Pause between channel fetches during a refresh. Defaults to `2s` when you have more than 10 channels, otherwise `500ms`.
 - `VIDEO_URL` - Base URL for video links. Leave unset to use YouTube. Set to an Invidious or Piped instance to rewrite links, e.g. `https://invidious.tiekoetter.com`.
 
 ```bash

@@ -9,12 +9,14 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -88,7 +90,7 @@ var (
 	tmpl          *template.Template
 	urlCache      = make(map[string]string)
 	cacheMutex    sync.RWMutex
-	httpClient    = &http.Client{Timeout: 15 * time.Second}
+	httpClient    = newHTTPClient()
 	port             = envOrDefault("PORT", "8080")
 	videoURLBase     = strings.TrimRight(os.Getenv("VIDEO_URL"), "/")
 	channelIDPattern = regexp.MustCompile(`youtube\.com/channel/(UC[a-zA-Z0-9_-]+)`)
@@ -106,7 +108,7 @@ func main() {
 		"join":      strings.Join,
 	}).ParseFiles("templates/feed.html"))
 
-	refreshInterval := envDurationOrDefault("REFRESH_INTERVAL", 5*time.Minute)
+	refreshInterval := envDurationOrDefault("REFRESH_INTERVAL", 15*time.Minute)
 	refreshFeeds(cfg)
 
 	if videoURLBase != "" {
@@ -137,6 +139,51 @@ func envOrDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func newHTTPClient() *http.Client {
+	timeout := envDurationOrDefault("HTTP_TIMEOUT", 30*time.Second)
+	return &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			MaxIdleConns:        32,
+			MaxIdleConnsPerHost: 8,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+}
+
+func drainBody(resp *http.Response) {
+	if resp == nil || resp.Body == nil {
+		return
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+}
+
+func retryDelay(statusCode int, attempt int, retryAfter string) time.Duration {
+	if statusCode == http.StatusTooManyRequests || statusCode == http.StatusServiceUnavailable {
+		if secs, err := strconv.Atoi(strings.TrimSpace(retryAfter)); err == nil && secs > 0 {
+			return time.Duration(secs) * time.Second
+		}
+		return time.Duration(30+attempt*15) * time.Second
+	}
+	base := time.Duration(1<<uint(attempt)) * time.Second
+	jitter := time.Duration(rand.Intn(500)) * time.Millisecond
+	return base + jitter
+}
+
+func channelFetchDelay(channelCount int) time.Duration {
+	if value := os.Getenv("CHANNEL_FETCH_DELAY"); value != "" {
+		d, err := time.ParseDuration(value)
+		if err != nil {
+			log.Fatalf("Invalid CHANNEL_FETCH_DELAY: %v", err)
+		}
+		return d
+	}
+	if channelCount > 10 {
+		return 2 * time.Second
+	}
+	return 500 * time.Millisecond
 }
 
 func envDurationOrDefault(key string, fallback time.Duration) time.Duration {
@@ -215,6 +262,7 @@ func resolveChannelID(rawURL string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		drainBody(resp)
 		return "", fmt.Errorf("could not fetch channel page")
 	}
 
@@ -266,31 +314,35 @@ func loadConfig(path string) (Config, error) {
 	return cfg, nil
 }
 
-func fetchFeed(url string) ([]Entry, error) {
+func fetchFeed(url string) (entries []Entry, statusCode int, retryAfter string, err error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, "", err
 	}
-	req.Header.Set("User-Agent", "YouRSS/1.0")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; YouRSS/1.0)")
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, 0, "", err
 	}
 	defer resp.Body.Close()
 
+	statusCode = resp.StatusCode
+	retryAfter = resp.Header.Get("Retry-After")
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
+		drainBody(resp)
+		return nil, statusCode, retryAfter, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024))
 	if err != nil {
-		return nil, err
+		return nil, statusCode, retryAfter, err
 	}
 
 	var feed Feed
 	if err := xml.NewDecoder(bytes.NewReader(body)).Decode(&feed); err != nil {
-		return nil, err
+		return nil, statusCode, retryAfter, err
 	}
 
 	for i := range feed.Entries {
@@ -301,21 +353,28 @@ func fetchFeed(url string) ([]Entry, error) {
 		feed.Entries[i].Views = feed.Entries[i].MediaGroup.MediaCommunity.Statistics.Views
 	}
 
-	return feed.Entries, nil
+	return feed.Entries, statusCode, retryAfter, nil
 }
 
 func fetchFeedWithRetry(url string, attempts int) ([]Entry, error) {
 	var lastErr error
+	var lastStatus int
 	for attempt := 0; attempt < attempts; attempt++ {
-		entries, err := fetchFeed(url)
+		entries, statusCode, retryAfter, err := fetchFeed(url)
 		if err == nil {
 			return entries, nil
 		}
 		lastErr = err
+		lastStatus = statusCode
 		log.Printf("Fetch attempt %d/%d failed for %s: %v", attempt+1, attempts, url, err)
 		if attempt < attempts-1 {
-			time.Sleep(time.Duration(attempt+1) * time.Second)
+			delay := retryDelay(statusCode, attempt, retryAfter)
+			log.Printf("Retrying in %v", delay)
+			time.Sleep(delay)
 		}
+	}
+	if lastStatus == http.StatusTooManyRequests {
+		return nil, fmt.Errorf("%w (YouTube rate limit — try a longer REFRESH_INTERVAL)", lastErr)
 	}
 	return nil, lastErr
 }
@@ -327,12 +386,23 @@ func refreshFeeds(cfg Config) {
 	total := len(cfg.Channels)
 	successCount := 0
 	failedChannels := make([]string, 0)
+	fetchDelay := channelFetchDelay(total)
+	names := make([]string, 0, total)
+	for name := range cfg.Channels {
+		names = append(names, name)
+	}
+	sort.Strings(names)
 
-	for name, channelID := range cfg.Channels {
+	for i, name := range names {
+		if i > 0 {
+			time.Sleep(fetchDelay)
+		}
+
+		channelID := cfg.Channels[name]
 		feedURL := "https://www.youtube.com/feeds/videos.xml?channel_id=" + channelID
 		log.Printf("Fetching channel %s...", name)
 
-		entries, err := fetchFeedWithRetry(feedURL, 3)
+		entries, err := fetchFeedWithRetry(feedURL, 5)
 		if err != nil {
 			log.Printf("Error fetching channel %s: %v", name, err)
 			failedChannels = append(failedChannels, name)
@@ -448,6 +518,12 @@ func proxyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		drainBody(resp)
+		http.Error(w, "Failed to fetch image", http.StatusBadGateway)
+		return
+	}
 
 	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
 	w.Header().Set("Cache-Control", "public, max-age=31536000")
