@@ -46,6 +46,7 @@ YouTube's public Atom feed (`/feeds/videos.xml`) sometimes returns 404 for every
 - `HTTP_TIMEOUT` - Per-request timeout for YouTube and thumbnail fetches. Defaults to `30s`.
 - `CHANNEL_FETCH_DELAY` - Pause between channel fetches during a refresh. Defaults to `2s` when you have more than 10 channels, otherwise `500ms`.
 - `VIDEO_URL` - Base URL for video links. Leave unset to use YouTube. Set to an Invidious or Piped instance to rewrite links, e.g. `https://invidious.tiekoetter.com`.
+- `HIDE_SHORTS` - Exclude YouTube Shorts from the feed. Defaults to `true`. Set to `false` to include Shorts.
 
 ```bash
 PORT=3000 VIDEO_URL=https://invidious.tiekoetter.com go run main.go

@@ -430,6 +430,11 @@ func refreshFeeds(cfg Config) {
 
 		channelID := cfg.Channels[name]
 		feedURL := "https://www.youtube.com/feeds/videos.xml?channel_id=" + channelID
+		if v := strings.ToLower(os.Getenv("HIDE_SHORTS")); v != "false" && v != "0" && v != "no" && v != "off" {
+			if strings.HasPrefix(channelID, "UC") {
+				feedURL = "https://www.youtube.com/feeds/videos.xml?playlist_id=UULF" + channelID[2:]
+			}
+		}
 		log.Printf("Fetching channel %s...", name)
 
 		entries, status, err := fetchFeedWithRetry(feedURL, 5)
