@@ -80,12 +80,12 @@ img {
   white-space: nowrap;
 }
 
-li:has(.title:hover) {
+li:has(a:hover) {
   position: relative;
   z-index: 1;
 }
 
-.title:hover {
+a:hover .title {
   background: #111;
   overflow: visible;
   width: max-content;
