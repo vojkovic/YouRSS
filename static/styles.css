@@ -135,7 +135,8 @@ footer output {
   margin-top: 0.5rem;
 }
 
-footer .error {
+footer .error,
+footer .failed {
   color: #c88;
   font-size: 0.875rem;
   margin-top: 0.5rem;

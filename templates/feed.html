@@ -14,7 +14,6 @@
             {{if .Status.Updating}}Updating…{{else}}{{.Status.SuccessCount}}/{{.Status.TotalChannels}} channels{{end}}
             · {{len .Entries}} videos
             {{if not .Status.Updating}}· updated {{timeAgo .Status.LastUpdate}}{{end}}
-            {{if .Status.FailedChannels}}· failed: {{join .Status.FailedChannels ", "}}{{end}}
         </p>
     </header>
     <ul>
@@ -38,6 +37,7 @@
         </form>
         {{if .ConvertResult}}<output>{{.ConvertResult}}</output>{{end}}
         {{if .ConvertError}}<p class="error">{{.ConvertError}}</p>{{end}}
+        {{if .Status.FailedChannels}}<p class="failed">Failed channels: {{join .Status.FailedChannels ", "}}</p>{{end}}
     </footer>
 </body>
 </html>
